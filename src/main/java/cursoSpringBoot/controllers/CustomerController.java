@@ -1,29 +1,29 @@
 package cursoSpringBoot.controllers;
 
 import cursoSpringBoot.domain.Customer;
+import cursoSpringBoot.service.CustomerService;
+import cursoSpringBoot.service.CustomersServiceImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequestMapping("/clientes")
 public class CustomerController {
 
-    private List <Customer> customers = new ArrayList<>(Arrays.asList(
-
-            new Customer(123, "Gerardo Lopez", "gerardol", "contrasena123"),
-            new Customer(456, "Alejandra Garcia", "alegarcia", "clave456"),
-            new Customer(789, "Laura Sanchez", "lauras", "secreto789"),
-            new Customer(234, "Carlos Martinez", "carlosm", "password234")
-
-    ));
+    @Autowired
+    private CustomerService customersService;
 
 
     @GetMapping
-    public List<Customer> getCustomers(){
-        return customers;
+    public ResponseEntity <List<Customer>> getCustomers (){
+        List<Customer> customers = customersService.getCustomers();
+        return ResponseEntity.ok(customers);
     }
 
     /**
@@ -34,30 +34,39 @@ public class CustomerController {
 
     //@RequestMapping(value = "/{username}", method = RequestMethod.GET)
     @GetMapping("/{username}")
-    public Customer getCliente(@PathVariable String username){
+    public ResponseEntity<?> getCliente(@PathVariable String username){
+        List<Customer> customers = customersService.getCustomers();
         for(Customer c : customers){
             if (c.getUsername().equalsIgnoreCase(username)) {
-                return c;
+                return ResponseEntity.ok(c);
             }
         }
-        return null;
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Cliente no encontrado con username: "+ username);
     }
 
     @PostMapping
-    public Customer postCliente(@RequestBody Customer customer){
+    public ResponseEntity<?> postCliente(@RequestBody Customer customer){
+        List<Customer> customers = customersService.getCustomers();
         customers.add(customer);
-        return  customer;
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{username}")
+                .buildAndExpand(customer.getUsername())
+                .toUri();
+        // return ResponseEntity.created(location).build();
+        return ResponseEntity.created(location).body(customer);
     }
 
 
     /**
-     * Actualiza informacion de clientes
+     * Actualiza información de clientes
      * @param customer objeto con la información actualizada
      * @return customer actualizado
      */
     @PutMapping
-    public Customer putCliente(@RequestBody Customer customer){
-
+    public  ResponseEntity<?> putCliente(@RequestBody Customer customer){
+        List<Customer> customers = customersService.getCustomers();
         for (Customer c : customers){
 
             if (c.getID() == customer.getID()){
@@ -65,10 +74,10 @@ public class CustomerController {
                 c.setUsername(customer.getUsername());
                 c.setPassword(customer.getPassword());
 
-                return c;
+                return ResponseEntity.noContent().build();
             }
         }
-        return null;
+        return ResponseEntity.notFound().build();
     }
 
     /**
@@ -77,14 +86,15 @@ public class CustomerController {
      * @return reotrna el cliente eliminado
      */
     @DeleteMapping("/{id}")
-    public Customer deleteCliente(@PathVariable int id){
+    public ResponseEntity<?> deleteCliente(@PathVariable int id){
+        List<Customer> customers = customersService.getCustomers();
         for(Customer c : customers){
             if (c.getID() == id) {
                 customers.remove(c);
-                return c;
+                return ResponseEntity.noContent().build();
             }
         }
-        return null;
+        return  ResponseEntity.notFound().build();
     }
 
     /**
@@ -93,8 +103,8 @@ public class CustomerController {
      * @return customer modificado
      */
     @PatchMapping
-    public Customer patchCliente(@RequestBody Customer customer){
-
+    public ResponseEntity<?> patchCliente(@RequestBody Customer customer){
+        List<Customer> customers = customersService.getCustomers();
         for (Customer c : customers){
             if (c.getID() == customer.getID()){
                 if (customer.getName() != null){
@@ -106,10 +116,10 @@ public class CustomerController {
                 if (customer.getPassword() != null){
                     c.setPassword(customer.getPassword());
                 }
-                return c;
+                return ResponseEntity.ok("Cliente " + customer.getName() +" Actualizado ");
             }
         }
 
-        return null;
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Cliente " + customer.getID() +" No encontrado ");
     }
 }
